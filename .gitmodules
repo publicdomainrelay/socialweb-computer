@@ -49,3 +49,6 @@
 [submodule "policy-engine"]
 	path = policy-engine
 	url = https://github.com/publicdomainrelay/policy-engine
+[submodule "socialweb-computer-ssh"]
+	path = socialweb-computer-ssh
+	url = https://github.com/publicdomainrelay/socialweb-computer-ssh

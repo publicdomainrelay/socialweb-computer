@@ -73,6 +73,11 @@ const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
     flags: "--allow-env --allow-read --allow-write --allow-run --no-check",
     needsDocker: false,
   },
+  "socialweb-computer-ssh": {
+    flags:
+      "-A --unstable-kv --unstable-worker-options --ignore=test/live_market_test.ts --no-check",
+    needsDocker: false,
+  },
 };
 
 const DEFAULT_FLAGS = "-A --no-check";
