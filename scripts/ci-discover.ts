@@ -41,7 +41,8 @@ const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
     needsDocker: false,
   },
   "atproto-market": {
-    flags: "-A --unstable-kv --unstable-worker-options --no-check",
+    flags:
+      "-A --unstable-kv --unstable-worker-options --import=../scripts/undici-shim.ts --no-check",
     needsDocker: true,
   },
   "policy-engine": {
@@ -49,7 +50,7 @@ const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
     needsDocker: false,
   },
   "hono-compute-provider": {
-    flags: "-A --no-check",
+    flags: "-A --import=../scripts/undici-shim.ts --no-check",
     needsDocker: true,
   },
   "did-key-ingress-proxy": {
