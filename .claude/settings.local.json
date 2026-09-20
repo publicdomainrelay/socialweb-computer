@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(./scripts/find-all-package.ts)",
-      "Bash(yq -P)"
+      "Bash(yq -P)",
+      "mcp__plugin_context-mode_context-mode__ctx_execute"
     ]
   }
 }
