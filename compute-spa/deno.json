@@ -14,6 +14,8 @@
     "@noble/curves": "npm:@noble/curves@^1.9.7",
     "@noble/hashes": "npm:@noble/hashes@^1.8.0",
     "@ipld/dag-cbor": "npm:@ipld/dag-cbor@^9",
+    "jose": "npm:jose@^6",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
     "multiformats": "npm:multiformats@^13",
     "@atiproto/atproto-attestation": "npm:@atiproto/atproto-attestation@0.1.0",
     "@publicdomainrelay/hono-factory-atproto-repo-deno": "../hono-pds/lib/hono-factory-atproto-repo-deno/mod.ts",

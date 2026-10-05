@@ -28,58 +28,94 @@ interface TypecheckEntry {
 // ---- workspace flag map ----
 // Update when adding a new workspace or changing test flags.
 // Unknown workspaces get default: -A --no-check, needsDocker: false.
+//
+// `--no-check` was removed from every entry below that was MEASURED to type
+// check under its own flags (`deno test --no-run` with the flags listed here,
+// 2026-09-22). Removing it is per-workspace: a flag left in place carries a
+// reason in the comment above it. Do not clear one without re-measuring --
+// `deno test` without `--no-check` exits non-zero on a type error, so a
+// cleared flag on a workspace that does not type check is a red CI job, not a
+// silenced one.
 
 const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
   "hono-pds": {
     flags:
-      "--allow-net --allow-env --allow-read --allow-write --allow-run --unstable-kv --unstable-worker-options --no-check",
+      "--allow-net --allow-env --allow-read --allow-write --allow-run --unstable-kv --unstable-worker-options",
     needsDocker: false,
   },
   "deno-worker-sandbox": {
     flags:
-      "--allow-net --allow-env --allow-read --allow-write --allow-run --unstable-worker-options --no-check",
+      "--allow-net --allow-env --allow-read --allow-write --allow-run --unstable-worker-options",
     needsDocker: false,
   },
   "atproto-market": {
-    flags: "-A --unstable-kv --unstable-worker-options --no-check",
+    flags: "-A --unstable-kv --unstable-worker-options",
     needsDocker: true,
   },
   "policy-engine": {
-    flags: "-A --unstable-worker-options --no-check",
+    flags: "-A --unstable-worker-options",
     needsDocker: false,
   },
   "hono-compute-provider": {
-    flags: "-A --no-check",
+    flags: "-A",
     needsDocker: true,
   },
   "did-key-ingress-proxy": {
-    flags: "-A --no-check",
+    flags: "-A",
     needsDocker: true,
   },
   "atproto-relay": {
-    flags: "-A --no-check",
+    flags: "-A",
     needsDocker: false,
   },
+  // KEPT --no-check: this key matches NO discovered test workspace. The tests
+  // under atproto-reverse-proxy/ live in the nested
+  // compute-contract-reference-implementation-poc/src/typescript subtree, which
+  // is a separate deno.json and therefore gets DEFAULT_FLAGS, not this entry.
+  // The entry is dead as written; whether its tests type check is unmeasured
+  // because they never reach it. Fixing the key is a separate change.
   "atproto-reverse-proxy": {
     flags: "-A --no-check",
     needsDocker: false,
   },
   "hono-jsr": {
     flags:
-      "--allow-net --allow-read --allow-write --allow-run --allow-env --no-check",
+      "--allow-net --allow-read --allow-write --allow-run --allow-env",
     needsDocker: false,
   },
   "typescript-helpers": {
-    flags: "--allow-env --allow-read --allow-write --allow-run --no-check",
+    flags: "--allow-env --allow-read --allow-write --allow-run",
     needsDocker: false,
   },
   "socialweb-computer-ssh": {
     flags:
-      "-A --unstable-kv --unstable-worker-options --ignore=test/live_market_test.ts --no-check",
+      "-A --unstable-kv --unstable-worker-options --ignore=test/live_market_test.ts",
     needsDocker: false,
   },
 };
 
+// Fallback for workspaces absent from FLAG_MAP. It carries --no-check, so a
+// workspace landing here is silently un-type-checked. main() names every such
+// workspace on stderr -- an unnamed default is invisible in CI logs.
+//
+// KEPT --no-check, and this one is load-bearing: 4 workspaces land here today
+// and one of them does NOT type check. Measured 2026-09-22 with this exact
+// flag set minus --no-check, per workspace:
+//   compute-spa                                          CLEAN
+//   digitalocean-bidder                                  CLEAN
+//   socialweb-computer-kcp/experiments/auth-paths/service-auth  CLEAN
+//   atproto-reverse-proxy/compute-contract-reference-implementation-poc/src/typescript  DIRTY
+// The dirty one fails on module resolution, not on types:
+//   error: Failed resolving types. Unknown export
+//   './com/atproto/repo/strongRef.defs.ts' for '@publicdomainrelay/lexicons'.
+//   at lib/market/types.ts:11
+// lib/lexicons/deno.json declares `"exports": "./mod.ts"` (one export, the org
+// ABC rule), so its subpath -- which lib/market/types.ts imports as
+// `@publicdomainrelay/lexicons/com/atproto/repo/strongRef.defs.ts` -- has no
+// export to resolve. Because they are `import type`, they erase at runtime, so
+// the tests pass under --no-check and fail only when types are resolved.
+// Clearing this default needs that resolution fixed first, or a per-workspace
+// entry for the three clean workspaces so they stop inheriting it.
 const DEFAULT_FLAGS = "-A --no-check";
 
 // ---- helpers ----
@@ -213,5 +249,16 @@ const output = {
   test: testEntries,
   typecheck: typecheckEntries,
 };
+
+// stderr, never stdout: stdout is the JSON matrix CI parses.
+const defaulted = testEntries.filter((t) => FLAG_MAP[t.dir] === undefined);
+console.error(
+  `ci-discover: ${testEntries.length} test workspaces; ` +
+    `${defaulted.length} not in FLAG_MAP, so they get the default ` +
+    `"${DEFAULT_FLAGS}" and are NOT type checked.`,
+);
+for (const t of defaulted) {
+  console.error(`  defaulted: ${t.dir}  ->  ${t.flags}`);
+}
 
 console.log(JSON.stringify(output));

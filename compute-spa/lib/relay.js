@@ -4,6 +4,7 @@
 
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
+import * as jose from 'jose';
 import {
   XRPC_DISPATCHER_HOST, SUBSCRIBE_NSID, GET_NONCE_NSID,
   SUBMIT_BID_NSID, TTYD_CREDS_NSID, SSH_KEY_NSID,
@@ -151,6 +152,77 @@ export async function registerDidPlc(kp, proxyRef) {
   return did;
 }
 
+/* ── ttyd credential trust anchor ── */
+
+// Trust anchor for the ttyd-credential gate: the issuers this relay will check a
+// signature against. Configuration owns the set (see configureRelayTrust) and it
+// starts EMPTY, so an unconfigured relay trusts no one. It is never derived from
+// the token under test -- deriving it from the token's `iss` is how a caller ends
+// up supplying the key material its own signature is checked against.
+let trustedIssuerUrls = [];
+
+/**
+ * Configure the issuers this relay trusts. Fail-closed: omitted or empty = none.
+ *
+ * A relay that never gets this call refuses every ttyd token -- including the
+ * guest's first-boot `setup-wootty.service` fetch, which is the only legitimate
+ * reader of this path. Always pass the full set for every VM this browser holds;
+ * the set is replaced wholesale.
+ */
+export function configureRelayTrust(opts) {
+  trustedIssuerUrls = [...(opts?.trustedIssuerUrls ?? [])];
+}
+
+function actxFromAudience(aud) {
+  const rawAud = Array.isArray(aud) ? aud[0] : aud;
+  if (!rawAud) return null;
+  const qIdx = rawAud.indexOf('?');
+  return qIdx >= 0 ? new URLSearchParams(rawAud.slice(qIdx + 1)).get('actx') : null;
+}
+
+/** The dispatcher forwards `headers.entries()`, which lowercases names. */
+function authHeader(headers) {
+  for (const [k, v] of Object.entries(headers ?? {})) {
+    if (k.toLowerCase() === 'authorization') return v;
+  }
+  return undefined;
+}
+
+/**
+ * Verify an OIDC bearer token and return the pending ttyd request it authorises.
+ * The signature root is `trustedIssuerUrls`, never the token's own `iss`; only
+ * verified claims select the request, and the match returned IS the credential.
+ */
+export async function verifyTtydOidc(authHeaderValue, ttydRequests) {
+  const token = (authHeaderValue ?? '').replace(/^Bearer\s+/i, '');
+  if (token.split('.').length !== 3) throw new Error('missing or malformed OIDC token');
+
+  const unverified = jose.decodeJwt(token);
+  const rawAud = Array.isArray(unverified.aud) ? unverified.aud[0] : unverified.aud;
+  const iss = typeof unverified.iss === 'string' ? unverified.iss : '';
+  if (!rawAud || !iss) throw new Error('OIDC token missing aud/iss');
+
+  // A token names the issuer it wishes to be judged by; configuration decides
+  // whether that issuer is trusted at all, before any host is contacted.
+  if (!trustedIssuerUrls.includes(iss)) throw new Error(`untrusted OIDC issuer: ${iss}`);
+
+  const oidcCfg = await fetch(`${iss}/.well-known/openid-configuration`).then((r) => r.json());
+  const jwks = jose.createRemoteJWKSet(new URL(oidcCfg.jwks_uri));
+  const { payload } = await jose.jwtVerify(token, jwks, { issuer: iss, audience: rawAud });
+
+  const sub = payload.sub ?? '';
+  const actx = actxFromAudience(payload.aud);
+  if (!actx) throw new Error('OIDC aud missing actx');
+  const match = [...ttydRequests.values()].find((r) =>
+    r.didPlc === actx &&
+    sub.startsWith('actx:') &&
+    (sub.endsWith(`:plc:${r.didPlcKey}:role:get-ttyd-password-${r.vmName}`) ||
+     sub.endsWith(`:plc:${r.didPlcKey}:role:${r.vmName}`))
+  );
+  if (!match) throw new Error('no pending VM request matches token actx/sub');
+  return match;
+}
+
 /* ── RelayClient ── */
 
 /**
@@ -179,10 +251,11 @@ export class RelayClient {
   onBid = null;
   onStateChange = null;
 
-  constructor({ host = XRPC_DISPATCHER_HOST, keypair, serviceAuthMinter }) {
+  constructor({ host = XRPC_DISPATCHER_HOST, keypair, serviceAuthMinter, trustedIssuerUrls }) {
     this.#host = host;
     this.#keypair = keypair;
     this.#serviceAuthMinter = serviceAuthMinter;
+    configureRelayTrust({ trustedIssuerUrls });
   }
 
   get status() { return this.#status; }
@@ -227,7 +300,9 @@ export class RelayClient {
             return;
           }
           if ($type === `${SUBSCRIBE_NSID}#request`) {
-            this.#handleIncomingRequest(msg);
+            this.#handleIncomingRequest(msg).catch((err) => {
+              this.#respond(msg.requestId, 500, { error: 'HandlerError', message: String(err) });
+            });
             return;
           }
         };
@@ -267,7 +342,7 @@ export class RelayClient {
     });
   }
 
-  #handleIncomingRequest(frame) {
+  async #handleIncomingRequest(frame) {
     // DID document serving
     if (frame.path === '/.well-known/did.json') {
       const kpDid = this.#keypair.did();
@@ -294,7 +369,14 @@ export class RelayClient {
       const collection = frame.params?.collection || '';
       const ttydReq = this.#ttydRequests.get(rkey);
       if (ttydReq && (collection === TTYD_CREDS_NSID || !collection)) {
-        this.#respond(frame.requestId, 200, { uri: `at://${ttydReq.didPlc}/${TTYD_CREDS_NSID}/${rkey}`, value: { $type: TTYD_CREDS_NSID, username: 'agent', password: ttydReq.password } });
+        let verified;
+        try {
+          verified = await verifyTtydOidc(authHeader(frame.headers), this.#ttydRequests);
+        } catch (err) {
+          this.#respond(frame.requestId, 401, { error: 'Unauthorized', message: String(err) });
+          return;
+        }
+        this.#respond(frame.requestId, 200, { uri: `at://${verified.didPlc}/${TTYD_CREDS_NSID}/${rkey}`, value: { $type: TTYD_CREDS_NSID, username: 'agent', password: verified.password } });
         return;
       }
       const rec = this.#epdsLookup(collection, rkey);
@@ -372,9 +454,9 @@ export class RelayClient {
 }
 
 /** Convenience: create a fully wired relay client from a persisted keypair. */
-export function createRelayClient({ host = XRPC_DISPATCHER_HOST, keypair, serviceAuthMinter, onBid, onStateChange }) {
+export function createRelayClient({ host = XRPC_DISPATCHER_HOST, keypair, serviceAuthMinter, trustedIssuerUrls, onBid, onStateChange }) {
   const adapter = createRelayKeypairAdapter(keypair);
-  const client = new RelayClient({ host, keypair: adapter, serviceAuthMinter });
+  const client = new RelayClient({ host, keypair: adapter, serviceAuthMinter, trustedIssuerUrls });
   if (onBid) client.onBid = onBid;
   if (onStateChange) client.onStateChange = onStateChange;
   return client;

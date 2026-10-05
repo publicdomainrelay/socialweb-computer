@@ -152,7 +152,6 @@ async function runTests(ws: WorkspaceTests): Promise<TestResult> {
       "--allow-import",
       "--unstable-kv",
       "--unstable-worker-options",
-      "--no-check",
       ...ws.testFiles.map((f) => relative(cwd, resolve(ORG_ROOT, f))),
     ],
     cwd,
@@ -184,6 +183,25 @@ if (workspaces.length === 0) {
   console.log("No test files found under", ORG_ROOT);
   Deno.exit(0);
 }
+
+// No `--no-check`: every workspace below is type checked as part of its
+// `deno test` (see runTests). A workspace whose types do not check now fails
+// the run instead of passing silently.
+function printTypeCheckNotice(): void {
+  console.log(
+    "TYPE CHECKING ENABLED: this runner passes no --no-check, so every " +
+      "workspace below is type checked before its tests run.",
+  );
+  console.log(
+    "A green result means the tests passed AND the types checked. A type " +
+      "error shows as that workspace failing.",
+  );
+}
+
+console.log(
+  `Running ${workspaces.length} workspace(s). Type checking is enabled for ` +
+    "every one of them; this run reports test results and type errors.",
+);
 
 let stopEmbeddingServer: (() => void) | null = null;
 const embeddingWorkspaces = await Promise.all(workspaces.map(async (w) =>
@@ -219,6 +237,8 @@ const colDur = 6;
 
 const sep = `| ${"-".repeat(colWs)} | ${"-".repeat(colPass)} | ${"-".repeat(colFail)} | ${"-".repeat(colDur)} |`;
 
+printTypeCheckNotice();
+console.log("");
 console.log(`| ${"workspace".padEnd(colWs)} | ${"passed".padStart(colPass)} | ${"failed".padStart(colFail)} | ${"duration".padStart(colDur)} |`);
 console.log(sep);
 
@@ -237,5 +257,26 @@ console.log(sep);
 console.log(
   `| ${"total".padEnd(colWs)} | ${String(totalPassed).padStart(colPass)} | ${String(totalFailed).padStart(colFail)} | ${"".padStart(colDur)} |`,
 );
+console.log(
+  "NOTE: no --no-check was passed, so every workspace above was type checked " +
+    "as part of its test run. A failure above may be a test failure or a type " +
+    "error; the workspace must be re-run individually to tell which.",
+);
 
-Deno.exit(totalFailed > 0 ? 1 : 0);
+// A type error (or a module resolution error) makes `deno test` exit non-zero
+// WITHOUT printing a `FAILED | N passed | N failed` line, so the counters above
+// stay 0 and cannot see it. The exit code is the only signal. Read it.
+const failedWorkspaces = results.filter((r) => !r.ok);
+if (failedWorkspaces.length > 0) {
+  console.log("");
+  console.log(
+    `NON-ZERO EXIT: ${failedWorkspaces.map((r) => r.workspace).join(", ")}`,
+  );
+  console.log(
+    "A non-zero exit with 0 failed tests is a type error or a module " +
+      "resolution error, not a test failure. Run that workspace on its own " +
+      "to see it.",
+  );
+}
+
+Deno.exit(totalFailed > 0 || failedWorkspaces.length > 0 ? 1 : 0);

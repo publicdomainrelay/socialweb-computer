@@ -1,6 +1,8 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/assert@^1.0.19": "1.0.19",
+    "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:@atiproto/atproto-attestation@0.1.0": "0.1.0",
     "npm:@atproto/api@0.16.4": "0.16.4",
     "npm:@atproto/crypto@0.2.0": "0.2.0",
@@ -10,7 +12,19 @@
     "npm:@ipld/dag-cbor@9": "9.2.7",
     "npm:@noble/curves@^1.9.7": "1.9.7",
     "npm:@noble/hashes@^1.8.0": "1.8.0",
+    "npm:jose@6": "6.2.12",
     "npm:multiformats@13": "13.4.2"
+  },
+  "jsr": {
+    "@std/assert@1.0.19": {
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
   },
   "npm": {
     "@atiproto/atproto-attestation@0.1.0": {
@@ -143,7 +157,7 @@
       "integrity": "sha512-Eiu/u4tZHz3IIhHZt0zneYEffSAO3Oqk/ToKwlu1TqKte6sjtPs/4uquSiAAGFYozqgo92JC/AQclWzzkHI5QQ==",
       "dependencies": [
         "@atproto/jwk",
-        "jose"
+        "jose@5.10.0"
       ]
     },
     "@atproto/jwk-webcrypto@0.1.10": {
@@ -442,6 +456,9 @@
     "jose@5.10.0": {
       "integrity": "sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg=="
     },
+    "jose@6.2.12": {
+      "integrity": "sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw=="
+    },
     "lru-cache@10.4.3": {
       "integrity": "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="
     },
@@ -497,6 +514,7 @@
       "jsr:@publicdomainrelay/fedproxy-rbac-common@0",
       "jsr:@publicdomainrelay/hostname-helpers@0",
       "jsr:@publicdomainrelay/market-common@0",
+      "jsr:@std/assert@^1.0.19",
       "npm:@atiproto/atproto-attestation@0.1.0",
       "npm:@atproto/api@0.16.4",
       "npm:@atproto/crypto@0.2.0",
@@ -506,6 +524,7 @@
       "npm:@ipld/dag-cbor@9",
       "npm:@noble/curves@^1.9.7",
       "npm:@noble/hashes@^1.8.0",
+      "npm:jose@6",
       "npm:multiformats@13"
     ],
     "links": {
