@@ -84,7 +84,7 @@ const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
     needsDocker: false,
   },
   "typescript-helpers": {
-    flags: "--allow-env --allow-read --allow-write --allow-run",
+    flags: "--allow-net --allow-env --allow-read --allow-write --allow-run",
     needsDocker: false,
   },
   "socialweb-computer-ssh": {
