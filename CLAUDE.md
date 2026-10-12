@@ -94,6 +94,7 @@ public edge entry points (caddy 443, an application's front) keep known addresse
 - `./scripts/task-tree.ts new <name> --repos a,b` -> ../publicdomainrelay-kcp-tasks/<name>, org-root-shaped, all real-dir git worktrees.
 - `eval "$(./scripts/task-tree.ts env <name>)"`; deno with --node-modules-dir=none; ports/state under $TASK_STATE_DIR; temp files under ~/.tmp (TMPDIR), never /tmp (tmpfs spills to swap).
 - Commit/push per repo on task/<name>; commit pointer combos in the task root; `sync` to rebase; `rm` when merged. See docs/task-tree.md.
+- One-off scripts: write a .ts file under ~/.tmp and run `deno run -A <file>.ts` (Deno.Command for git/go); no long bash chains or python heredocs.
 - Live tests run in the task's own market test bed (isolated fake PLC/relay/PDS/bidders/requesters, port 0), never against the shared real bidder.
 
 ## Layers
