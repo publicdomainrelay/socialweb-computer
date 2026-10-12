@@ -1,0 +1,78 @@
+name: Submodule CI
+
+on:
+  workflow_call:
+    inputs:
+      run:
+        description: Commands to run from the calling repo's directory inside the org root
+        required: true
+        type: string
+      post-run:
+        description: Commands to run afterwards even when run fails
+        required: false
+        type: string
+        default: ''
+      org-root-ref:
+        description: Org root ref whose submodule pins supply the siblings
+        required: false
+        type: string
+        default: main
+      timeout-minutes:
+        required: false
+        type: number
+        default: 30
+
+permissions: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout org root with submodules
+        uses: actions/checkout@v6
+        with:
+          repository: publicdomainrelay/org-root-dispatcher-typescript
+          ref: ${{ inputs.org-root-ref }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Locate calling repo among submodules
+        id: locate
+        run: |
+          path=""
+          while read -r key url; do
+            case "$url" in
+              "https://github.com/${GITHUB_REPOSITORY}"|"https://github.com/${GITHUB_REPOSITORY}.git")
+                path="$(git config -f .gitmodules --get "${key%.url}.path")"
+                ;;
+            esac
+          done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.url$')
+          if [ -z "$path" ]; then
+            echo "::error::${GITHUB_REPOSITORY} is not a submodule of the org root"
+            exit 1
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Replace submodule checkout with the commit under test
+        working-directory: ${{ steps.locate.outputs.path }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --force --detach FETCH_HEAD
+          git submodule update --init --recursive --depth=1
+          git log -1 --format='%H %s'
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run
+        working-directory: ${{ steps.locate.outputs.path }}
+        run: ${{ inputs.run }}
+
+      - name: Post run
+        if: ${{ always() && inputs.post-run != '' }}
+        working-directory: ${{ steps.locate.outputs.path }}
+        run: ${{ inputs.post-run }}
