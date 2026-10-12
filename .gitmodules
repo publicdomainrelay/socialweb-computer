@@ -52,3 +52,15 @@
 [submodule "socialweb-computer-ssh"]
 	path = socialweb-computer-ssh
 	url = https://github.com/publicdomainrelay/socialweb-computer-ssh
+[submodule "socialweb-computer-kcp"]
+	path = socialweb-computer-kcp
+	url = https://github.com/publicdomainrelay/kcp-vm.git
+[submodule "deno-kcp"]
+	path = deno-kcp
+	url = https://github.com/publicdomainrelay/deno-kcp.git
+[submodule "kcp-libs"]
+	path = kcp-libs
+	url = https://github.com/publicdomainrelay/kcp-libs.git
+[submodule "openbao-secrets-proxy"]
+	path = openbao-secrets-proxy
+	url = https://github.com/publicdomainrelay/openbao-secrets-proxy.git
