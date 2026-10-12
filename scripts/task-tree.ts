@@ -922,7 +922,9 @@ async function cmdEnv(orgRoot: string, args: Args): Promise<string> {
     `export DENO_NO_UPDATE_CHECK=1`,
     `export TASK_DENO_FLAGS='--node-modules-dir=none'`,
     `# run deno with --node-modules-dir=none, e.g. deno check $TASK_DENO_FLAGS <entry>`,
-    `mkdir -p "$TASK_STATE_DIR"`,
+    `export TMPDIR="$HOME/.tmp/swc-tasks/"${shellQuote(name)}`,
+    `export GOTMPDIR="$TMPDIR"`,
+    `mkdir -p "$TASK_STATE_DIR" "$TMPDIR"`,
   ].join("\n");
 }
 
