@@ -73,6 +73,21 @@ cd /home/johnandersen777/src/publicdomainrelay/hono-pds && deno test ...
 cd /home/johnandersen777/src/publicdomainrelay/hono-compute-provider && deno check ...
 ```
 
+## kcp is part of the application (paradigm)
+
+We use kcp as a core part of applications, not as infrastructure. An application
+instance (bidder, requester, gateway, market test bed, dev instance) = its own kcp
++ a manifest set + a profile. State = kcp objects; components = DenoPods /
+HostProcesses reconciled from them (not many servers inside one deno process);
+modes = profiles; composition = apply manifest sets / nest workspaces.
+Applications talk only over the atproto market protocol, never by sharing a kcp.
+Never frame designs as host/cluster topology. Only the virtual Kubernetes clusters
+project (tenant k3s behind kcp) uses kcp traditionally.
+
+Port 0 behind the edge: every listener binds port 0 and reports its bound address
+into its kcp object status; peers resolve by service name through kcp. Only stable
+public edge entry points (caddy 443, an application's front) keep known addresses.
+
 ## Parallel tasks: task trees
 
 - Never work cross-repo in a nested worktree (repo/.claude/worktrees/x): siblings do not resolve.
