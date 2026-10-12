@@ -68,6 +68,10 @@ const FLAG_MAP: Record<string, { flags: string; needsDocker: boolean }> = {
     flags: "-A",
     needsDocker: false,
   },
+  "scripts": {
+    flags: "-A",
+    needsDocker: false,
+  },
   // KEPT --no-check: this key matches NO discovered test workspace. The tests
   // under atproto-reverse-proxy/ live in the nested
   // compute-contract-reference-implementation-poc/src/typescript subtree, which
