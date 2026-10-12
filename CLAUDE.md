@@ -4,8 +4,29 @@
 active. Pattern applies per repo. Poly repo: all org repos live under dir holding
 this file = **org root**.
 
-Always run `./scripts/find-all-package.ts | yq -P` on session start to see where
-everything lives.
+For polyrepo work, run `./scripts/find-all-package.ts | yq -P` on session start to see
+where everything lives. For socialweb-computer work, read `socialweb-computer-kcp/AGENTS.md`
+instead.
+
+## socialweb-computer lives in socialweb-computer-kcp only
+
+- All socialweb-computer work (Go and TypeScript) happens in `socialweb-computer-kcp/`. It is
+  the monorepo and the single source of truth. Read `socialweb-computer-kcp/AGENTS.md` first.
+  It carries the ABC layering, kcp, port 0 and RFP-flow rules for that repository.
+- On 2026-10-12 the TypeScript that socialweb-computer uses was vendored, with its git history,
+  into `socialweb-computer-kcp/ts/<repository>/` from: atproto-market, atproto-relay,
+  deno-worker-sandbox, did-key-associator (hono-backend only), did-key-ingress-proxy,
+  hono-compute-provider, hono-pds, policy-engine, socialweb-computer-ssh, typescript-helpers.
+- Those repositories are FROZEN for every vendored path. Never edit, test against or push a
+  vendored path in the original repository. Never sync the monorepo copy back. The README.md of
+  each frozen repository names the paths it no longer owns.
+- TypeScript outside that set stays in the polyrepo and follows this file: digitalocean-bidder,
+  deno-macos-runner-desktop, the did-key-associator frontend (qr.fedfork.com),
+  open-architecture, and the packages that were not vendored.
+- Work on socialweb-computer-kcp in a plain git worktree or branch of that one repository. It
+  needs no sibling checkout: its one deno.json workspace and one deno.lock resolve every import.
+- Use real names (repository, directory, package, command, plan item id). Do not use nicknames
+  such as "the door" or "the bed"; `socialweb-computer-kcp/AGENTS.md` maps them to real names.
 
 ## Open Architecture — docs-as-code blueprint
 
@@ -32,7 +53,7 @@ across the polyrepo, maps findings to stubs, writes `STATUS_REPORT.md`.
 This entire project exists to provision compute through the **RFP / market
 flow**. A requester posts a `compute.vm` record + a signed `market.rfp`; bidders
 bid; the winner provisions a guest **via cloud-init `user_data`**
-(`buildUserData` composer + module registry in `cloud-init-common`); the requester reaches the guest
+(`buildUserData` composer + module registry in `socialweb-computer-kcp/ts/atproto-market/lib/common/cloud-init-common`); the requester reaches the guest
 **only through the relay** (ssh `ProxyCommand` over the websocket tunnel). The
 relay is the registry. Nothing talks to a guest except through this path.
 
@@ -49,7 +70,7 @@ relay is the registry. Nothing talks to a guest except through this path.
   of driving `runComputeContract(...)`. If a test needs a live guest, it drives
   the requester (`runComputeContract`) against a real local bidder running a
   container-mode compute provider (see
-  `atproto-market/test/bidder_container_integration_test.ts` for the canonical
+  `socialweb-computer-kcp/ts/atproto-market/test/bidder_container_integration_test.ts` for the canonical
   harness: local dispatcher + fake PLC + bidder + requester, fetch patched so
   `https://*.localhost` → local dispatcher). Provisioning ALWAYS goes
   requester → RFP → bid → accept → cloud-init.
@@ -90,6 +111,7 @@ public edge entry points (caddy 443, an application's front) keep known addresse
 
 ## Parallel tasks: task trees
 
+- Not for socialweb-computer-kcp: use a plain git worktree of that repository.
 - Never work cross-repo in a nested worktree (repo/.claude/worktrees/x): siblings do not resolve.
 - `./scripts/task-tree.ts new <name> --repos a,b` -> ../publicdomainrelay-kcp-tasks/<name>, org-root-shaped, all real-dir git worktrees.
 - `eval "$(./scripts/task-tree.ts env <name>)"`; deno with --node-modules-dir=none; ports/state under $TASK_STATE_DIR; temp files under ~/.tmp (TMPDIR), never /tmp (tmpfs spills to swap).
@@ -125,6 +147,8 @@ hono-* (CLI)                  <- imports hono-factory + common + external
 
 Org-root `typescript-helpers/` holds cross-repo shared utils (logger, event bus,
 cli-args-env, http-error, hono-error-middleware, hono-factory-static-files-fs).
+For socialweb-computer the helpers are in `socialweb-computer-kcp/ts/typescript-helpers/lib/`;
+the org-root copy is frozen for those packages.
 Check there BEFORE writing any new `lib/common/` package. Two repos need it = it
 belongs there.
 
