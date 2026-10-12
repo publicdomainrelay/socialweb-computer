@@ -26,7 +26,8 @@ instead.
 - Work on socialweb-computer-kcp in a plain git worktree or branch of that one repository. It
   needs no sibling checkout: its one deno.json workspace and one deno.lock resolve every import.
 - Use real names (repository, directory, package, command, plan item id). Do not use nicknames
-  such as "the door" or "the bed"; `socialweb-computer-kcp/AGENTS.md` maps them to real names.
+  such as "the door"; `socialweb-computer-kcp/AGENTS.md` maps old nicknames to real names. The
+  local set of fake PLC, relay, PDS, bidders and requesters is called a "market network".
 
 ## Open Architecture — docs-as-code blueprint
 
@@ -97,7 +98,7 @@ cd /home/johnandersen777/src/publicdomainrelay/hono-compute-provider && deno che
 ## kcp is part of the application (paradigm)
 
 We use kcp as a core part of applications, not as infrastructure. An application
-instance (bidder, requester, gateway, market test bed, dev instance) = its own kcp
+instance (bidder, requester, gateway, market network, dev instance) = its own kcp
 + a manifest set + a profile. State = kcp objects; components = DenoPods /
 HostProcesses reconciled from them (not many servers inside one deno process);
 modes = profiles; composition = apply manifest sets / nest workspaces.
@@ -117,7 +118,7 @@ public edge entry points (caddy 443, an application's front) keep known addresse
 - `eval "$(./scripts/task-tree.ts env <name>)"`; deno with --node-modules-dir=none; ports/state under $TASK_STATE_DIR; temp files under ~/.tmp (TMPDIR), never /tmp (tmpfs spills to swap).
 - Commit/push per repo on task/<name>; commit pointer combos in the task root; `sync` to rebase; `rm` when merged. See docs/task-tree.md.
 - One-off scripts: write a .ts file under ~/.tmp and run `deno run -A <file>.ts` (Deno.Command for git/go); no long bash chains or python heredocs.
-- Live tests run in the task's own market test bed (isolated fake PLC/relay/PDS/bidders/requesters, port 0), never against the shared real bidder.
+- Live runs use the work's own market network (isolated fake PLC/relay/PDS/bidders/requesters, port 0), never the shared real bidder.
 
 ## Layers
 
