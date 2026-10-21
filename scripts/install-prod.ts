@@ -67,9 +67,12 @@ async function exists(p: string): Promise<boolean> {
 
 async function generateKeyHex(): Promise<string> {
   const kp = await Secp256k1Keypair.create({ exportable: true });
-  return Array.from(await kp.export())
+  const raw = await kp.export();
+  const hex = Array.from(raw)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+  raw.fill(0); // zero the extracted private key bytes to shrink the exposure window
+  return hex;
 }
 
 function parseEnv(text: string): Map<string, string> {
